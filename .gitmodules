@@ -1,12 +1,9 @@
 [submodule "src/ros2_v4l2_camera"]
 	path = src/ros2_v4l2_camera
 	url = https://gitlab.com/boldhearts/ros2_v4l2_camera.git
-[submodule "src/ros2-camera-node"]
-	path = src/ros2-camera-node
-	url = https://github.com/antmicro/ros2-camera-node.git
 [submodule "src/ros2-ublox-zedf9p"]
 	path = src/ros2-ublox-zedf9p
 	url = https://github.com/gokulp01/ros2-ublox-zedf9p.git
-[submodule "src/navigation2_tutorials"]
-	path = src/navigation2_tutorials
-	url = https://github.com/ros-navigation/navigation2_tutorials.git
+[submodule "src/RTK_GPS_NTRIP"]
+	path = src/RTK_GPS_NTRIP
+	url = https://github.com/olvdhrm/RTK_GPS_NTRIP.git
