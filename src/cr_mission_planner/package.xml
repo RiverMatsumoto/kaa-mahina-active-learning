@@ -13,6 +13,7 @@
   <test_depend>ament_lint_common</test_depend>
 
   <depend>geodesy</depend>
+  <depend>smacc2</depend>
 
   <build_depend>cr_interfaces</build_depend>
   <build_depend>nav2z_client</build_depend>
