@@ -4,3 +4,6 @@
 [submodule "src/RTK_GPS_NTRIP"]
 	path = src/RTK_GPS_NTRIP
 	url = https://github.com/olvdhrm/RTK_GPS_NTRIP.git
+[submodule "src/SMACC2"]
+	path = src/SMACC2
+	url = https://github.com/robosoft-ai/SMACC2

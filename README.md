@@ -17,30 +17,17 @@ to install the required Vicon shared object libraries and python packages.
 If you have the rover and are trying to use a new laptop to use the rovers, follow the instructions for 
 installation for the ground station computer and ignore the Raspberry Pi software installation steps.
 
-Clone The repository with:
-`git clone --recurse-submodules https://github.com/RiverMatsumoto/kaa-mahina-active-learning`
+## Build Software for Active Learning Rover (Ground station computer and rover onboard computers)
 
-## Mobility Rover
-
-### Build Software for Mobility Rover (Ground station computer and rover Raspberry Pis)
-#### Ground station computer
-Clone repository, run installation script, and run the build script
+### On Ground Station Computer
+Clone The repository, cd into the directory and build
 ```
-git clone git@github.com:RiverMatsumoto/kaa-mahina.git
-cd kaa-mahina
-# TODO ./install_libraries.sh
-./ccbuild.bash
-```
-#### For Rover Raspberry Pis
-Clone the repository and run the build script:
-```
-git clone git@github.com:RiverMatsumoto/kaa-mahina.git
-cd kaa-mahina
-./ccbuild.bash
+git clone --recurse-submodules https://github.com/RiverMatsumoto/kaa-mahina-active-learning
+cd kaa-mahina-active-learning
+./ccbuild.sh
 ```
 
-### Build Software for Active Learning Rover (Ground station computer and rover onboard computers)
-TODO
+
 
 ## Rover Hardware Components Used
 ### Mobility Rover

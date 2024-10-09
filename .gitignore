@@ -11,4 +11,3 @@ src/basic_mobile_robot
 src/ROS2QtGui
 src/vicon_receiver
 src/ros2-vicon-receiver
-src/SMACC2

@@ -14,9 +14,10 @@
 
   <depend>geodesy</depend>
   <depend>smacc2</depend>
+  <depend>nav2z_client</depend>
+  <depend>ros_timer_client</depend>
 
   <build_depend>cr_interfaces</build_depend>
-  <build_depend>nav2z_client</build_depend>
 
   <build_depend>rosidl_default_generators</build_depend>
   <exec_depend>rosidl_default_runtime</exec_depend>
