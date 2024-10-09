@@ -1,0 +1,40 @@
+ekf_global:
+  ros__parameters:
+    frequency: 10.0
+    sensor_timeout: 0.1
+    two_d_mode: false
+
+    # Odometry
+    odom0: '/differential_drive_controller/odom'
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  true,  false,
+                   false, false, true,
+                   false, false, false]
+
+    # IMU
+    imu0: '/imu'
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  true,  true,  true,
+                  true,  true,  true]
+    imu0_differential: false
+    imu0_remove_gravitational_acceleration: true
+
+    odom1: odometry/gps
+    odom1_config: [true,  true,  false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, false]
+
+    # Frames
+    map_frame: 'map'
+    odom_frame: 'odom'
+    base_link_frame: 'base_link'
+    world_frame: 'map'
+    
+    # Initial state (optional)
+    # initial_state: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+

@@ -23,6 +23,7 @@
     <parent link="base_footprint"/>
     <child link="${prefix}base_link"/>
   </joint>
+  
 
   <link name="${prefix}base_link">
     <collision>
@@ -187,7 +188,6 @@
           izz="${caster_wheel_mass * 0.4 * (caster_wheel_radius * caster_wheel_radius)}"/>
         </inertial>
       </link>
-
   </xacro:macro>
 
 </robot>

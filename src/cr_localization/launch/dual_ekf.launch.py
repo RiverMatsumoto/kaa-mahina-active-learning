@@ -21,10 +21,25 @@ import launch.actions
 
 
 def generate_launch_description():
-    gps_wpf_dir = get_package_share_directory(
-        "nav2_gps_waypoint_follower_demo")
-    rl_params_file = os.path.join(
-        gps_wpf_dir, "config", "dual_ekf_navsat_params.yaml")
+    # gps_wpf_dir = get_package_share_directory(
+    #     "nav2_gps_waypoint_follower_demo")
+    # rl_params_file = os.path.join(
+    #     gps_wpf_dir, "config", "dual_ekf_navsat_params.yaml")
+    ekf_local_param = os.path.join(
+        get_package_share_directory("cr_localization"),
+        "config",
+        "ekf_local.yaml",
+    )
+    ekf_global_param = os.path.join(
+        get_package_share_directory("cr_localization"),
+        "config",
+        "ekf_global.yaml",
+    )
+    navsat_transform_param = os.path.join(
+        get_package_share_directory("cr_localization"),
+        "config",
+        "navsat_transform.yaml",
+    )
 
     return LaunchDescription(
         [
@@ -37,17 +52,17 @@ def generate_launch_description():
             launch_ros.actions.Node(
                 package="robot_localization",
                 executable="ekf_node",
-                name="ekf_filter_node_odom",
+                name="ekf_local",
                 output="screen",
-                parameters=[rl_params_file, {"use_sim_time": True}],
+                parameters=[ekf_local_param, {"use_sim_time": False}],
                 remappings=[("odometry/filtered", "odometry/local")],
             ),
             launch_ros.actions.Node(
                 package="robot_localization",
                 executable="ekf_node",
-                name="ekf_filter_node_map",
+                name="ekf_global",
                 output="screen",
-                parameters=[rl_params_file, {"use_sim_time": True}],
+                parameters=[ekf_global_param, {"use_sim_time": False}],
                 remappings=[("odometry/filtered", "odometry/global")],
             ),
             launch_ros.actions.Node(
@@ -55,9 +70,9 @@ def generate_launch_description():
                 executable="navsat_transform_node",
                 name="navsat_transform",
                 output="screen",
-                parameters=[rl_params_file, {"use_sim_time": True}],
+                parameters=[navsat_transform_param, {"use_sim_time": False}],
                 remappings=[
-                    ("imu/data", "imu/data"),
+                    ("imu/data", "imu"),
                     ("gps/fix", "ublox_gps_node/fix"),
                     ("gps/filtered", "gps/filtered"),
                     ("odometry/gps", "odometry/gps"),

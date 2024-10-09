@@ -4,12 +4,13 @@ navsat_transform_node:
     delay: 0.0
 
     # TF Frames
+    gps_frame: "gps_link"
     map_frame: "map"
     odom_frame: "odom"
     base_link_frame: "base_link"
 
     # Topics
-    gps_topic: "/gps/fix"
+    gps_topic: "/ublox_gps_node/fix"
     imu_topic: "/imu"
     odom_topic: "/odometry/filtered"
     magnetic_declination_radians: 0.0633
