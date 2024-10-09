@@ -1,6 +1,14 @@
-# Kaa Mahina
+# Kaa Mahina Active Learning Rover
 
-#### Repository for the Robotics Space Exploration Lab at UH Manoa
+#### Rover Software for Robotics Space Exploration Lab at UH Manoa
+This repository is for the active learning rover developed at the Robotics Space Exploration Lab at University of Hawaii at Manoa.
+There are two rovers that use similar software and the mobility rover software can be found at
+https://github.com/RiverMatsumoto/kaa-mahina-mobility.
+
+The difference between this rover and the mobility rover is in the moisture sensor probe mechanism and GPS functionality.
+This rover needs to be able to communicate to the ground station computer which must be running ROS Humble or Ubuntu 22.04.
+
+
 There are two rovers using the software in this repository, the Active Learning Rover and Mobility Rover.
 Each rover requires a LAN to connect to the ground station computer running Ubuntu 22.04 and ROS Humble.
 There will be an installation script will soon be added to this repository for the ground station computer
