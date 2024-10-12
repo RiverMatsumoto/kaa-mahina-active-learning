@@ -22,11 +22,13 @@ installation for the ground station computer and ignore the Raspberry Pi softwar
 ### On Ground Station Computer
 Clone The repository, cd into the directory and build
 ```
-git clone --recurse-submodules https://github.com/RiverMatsumoto/kaa-mahina-active-learning
+git clone --recursive https://github.com/RiverMatsumoto/kaa-mahina-active-learning
 cd kaa-mahina-active-learning
 ./ccbuild.sh
 ```
 
+### On Rover Raspberry pi and Jetson Orin Nano
+TODO
 
 
 ## Rover Hardware Components Used
