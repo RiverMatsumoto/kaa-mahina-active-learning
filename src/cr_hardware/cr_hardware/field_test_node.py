@@ -1,6 +1,6 @@
 ﻿#!/usr/bin/env python3
 
-#/home/roselab/miniconda3/envs/ml_rover/bin/python3
+# /home/roselab/miniconda3/envs/ml_rover/bin/python3
 # -*- coding: utf-8 -*- #
 """
 ʕっ•ᴥ•ʔっ
@@ -268,6 +268,9 @@ def update_visualization(next_point, sampled_points):
     image_file_path = os.path.join(new_folder_path, "GPAL_Path.png")
     fig1.savefig(image_file_path)
 
+    
+
+
 def process_data():
     
     cont = False
@@ -406,7 +409,8 @@ class FieldTestNode(Node):
 
     def run(self):
         
-        new_folder_path = create_folder_with_suffix(r"C:\Users\sapph\OneDrive\Documents\RoSE_Field_Testing\\" + TrialName + TrialNumber)
+        # new_folder_path = create_folder_with_suffix(r"C:\Users\sapph\OneDrive\Documents\RoSE_Field_Testing\\" + TrialName + TrialNumber)
+        new_folder_path = create_folder_with_suffix(r"~/field_testing_al/" + datetime.now().strftime('%Y-%m-%d_%H-%M-%S') + "/" + TrialName + TrialNumber)
         parent_dir = '/Users/sapph/OneDrive/Documents/RoSE_Field_Testing'
         image_path = parent_dir
         
