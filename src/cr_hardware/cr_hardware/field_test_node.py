@@ -4,7 +4,7 @@
 # -*- coding: utf-8 -*- #
 """
 ʕっ•ᴥ•ʔっ
-@authors: jen & sapph & river
+@authors: jen & sapph
 
 last updated: aug 19 2024 09:22
 """
@@ -14,6 +14,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from cr_interfaces.msg import MoisturePercent
+from std_srvs.srv import Trigger  # Import the Trigger service type
 
 # Basics
 import os
@@ -71,13 +72,12 @@ MOVEFILES = False
 TrialNumber = args.TrialNumber
 TrialName = "AL_Trial"
 
-# Field test grid sizing [100x100 square]
+# Field test grid sizing [10x10 grid]
 grid_length = 10
 grid_width = 10
 
 # ML parameters
 kernel_type = args.KernelType
-# kernel_type = 'RBF', 'Matern'
 poly_rank = 4
 r_disp = 6.0
 constraint_flag = 1
@@ -104,6 +104,14 @@ class FieldTestNode(Node):
         self.moisture_percent_sub = self.create_subscription(MoisturePercent, 'moisture_percent', self.moisture_percent_callback, 10)
         self.moisture_data = []
         self.data_lock = threading.Lock()
+
+        # Initialize synchronization primitives
+        self.data_collection_event = threading.Event()
+
+        # Create a service server
+        self.data_collection_service = self.create_service(Trigger, 'start_data_collection', self.handle_data_collection_request)
+
+        # Initialize other variables
         self.TrialNumber = TrialNumber
         self.TrialName = TrialName
         self.grid_length = grid_length
@@ -144,6 +152,8 @@ class FieldTestNode(Node):
         self.max_drift = float('-inf')
         self.samp = 1
 
+        self.collected_data_average = None  # Variable to store the collected data average
+
     class ExactGPModel(gpytorch.models.ExactGP):
         # Define the simplest form of GP model, exact inference
         def __init__(self, train_x, train_y, likelihood, kernel_type, poly_rank):
@@ -183,7 +193,17 @@ class FieldTestNode(Node):
 
     def moisture_percent_callback(self, msg: MoisturePercent):
         with self.data_lock:
+            self.get_logger().info(f'Received moisture percentage: {msg.moisture_percent}')
             self.moisture_data.append(msg.moisture_percent)
+
+    def handle_data_collection_request(self, request, response):
+        self.get_logger().info('Received data collection request')
+        # Set the event to start data collection
+        self.data_collection_event.set()
+        # Return response immediately
+        response.success = True
+        response.message = 'Data collection started.'
+        return response
 
     def RKHS_norm(self, K, y):
         n_row, n_col = K.shape
@@ -261,13 +281,15 @@ class FieldTestNode(Node):
 
         f_preds = self.model(x_test)
         y_preds = self.likelihood(self.model(x_test))
-        self.f_mean = f_preds.mean
-        self.f_var = f_preds.variance
-        self.f_covar = f_preds.covariance_matrix
+        self.f_mean = f_preds.mean.detach().numpy()
+        self.f_var = f_preds.variance.detach().numpy()
+        self.f_covar = f_preds.covariance_matrix.detach().numpy()
 
         with torch.no_grad():
             # Get upper and lower confidence bounds
             self.lower, self.upper = self.observed_pred.confidence_region()
+            self.lower = self.lower.detach().numpy()
+            self.upper = self.upper.detach().numpy()
 
     def create_folder_with_suffix(self, folder_path):
         i = 1
@@ -358,9 +380,9 @@ class FieldTestNode(Node):
             alpha=0.25, vmax=max(y_train), vmin=min(y_train))
         # Shade between the lower and upper confidence bounds
         for i_test in range(len(x_test_local)):
-            ax2.plot(x_test_local[i_test, 0].detach().numpy() * np.array([1, 1]),
-                     x_test_local[i_test, 1].detach().numpy() * np.array([1, 1]),
-                     np.array([lower_local[i_test].detach().numpy(), upper_local[i_test].detach().numpy()]), 'gray')
+            ax2.plot(x_test_local[i_test, 0].numpy() * np.array([1, 1]),
+                     x_test_local[i_test, 1].numpy() * np.array([1, 1]),
+                     np.array([lower_local[i_test], upper_local[i_test]]), 'gray')
         ax2.view_init(20, 20)
         ax2.set_xlabel('X', fontsize=8)
         ax2.set_ylabel('Y', fontsize=8)
@@ -409,12 +431,14 @@ class FieldTestNode(Node):
                 print(f"Moved {filename} to {destination_folder}")
 
     def process_data(self):
+        # Wait for the data collection event to be set by the service call
+        self.get_logger().info('Waiting for data collection to be triggered...')
+        self.data_collection_event.wait()
+
+        self.get_logger().info('Data collection started...')
         cont = False
         data_average = None
 
-        ##################################################
-        ########## Moisture Sensor Utilization ###########
-        ##################################################
         if self.MOISTURESENSOR:
             try:
                 # Reset the moisture data list
@@ -424,11 +448,11 @@ class FieldTestNode(Node):
                 # Record the start time
                 start_time = time.time()
 
-                # Wait for 100 seconds while collecting data
+                # Collect data for 5 seconds
                 while time.time() - start_time <= 5:
-                    rclpy.spin_once(self, timeout_sec=0.1)
+                    time.sleep(0.1)
 
-                # After 100 seconds, process the collected data
+                # After 5 seconds, process the collected data
                 with self.data_lock:
                     moisture_data_copy = self.moisture_data.copy()
                     self.get_logger().info(f"Data received from moisture sensor: {self.moisture_data}")
@@ -441,7 +465,7 @@ class FieldTestNode(Node):
                     file.write("Time,MoistureLevel\n")  # header of csv file
                     for data in moisture_data_copy:
                         file.write(f"0,{data}\n")
-                print("Data collection complete. Processing data...")
+                self.get_logger().info("Data collection complete. Processing data...")
 
                 # Load data from reading
                 data = pd.read_csv(
@@ -455,23 +479,27 @@ class FieldTestNode(Node):
                 data_average = data_average_sum / data_average_len
 
             except serial.SerialException as e:
-                print(f"Error with serial communication: {e}")
+                self.get_logger().error(f"Error with serial communication: {e}")
                 cont = True
                 data_average = None
             except FileNotFoundError as e:
-                print(f"Error with file operation: {e}")
+                self.get_logger().error(f"Error with file operation: {e}")
                 cont = True
                 data_average = None
             except pd.errors.EmptyDataError as e:
-                print(f"Error reading CSV data: {e}")
+                self.get_logger().error(f"Error reading CSV data: {e}")
                 cont = True
                 data_average = None
             except Exception as e:
-                print(f"An unexpected error occurred: {e}")
+                self.get_logger().error(f"An unexpected error occurred: {e}")
                 cont = True
                 data_average = None
 
-        return cont, data_average
+        # Store the collected data average
+        self.collected_data_average = data_average
+
+        # Reset the data collection event for next use
+        self.data_collection_event.clear()
 
     def run(self):
         base_path = os.path.expanduser('~/field_testing_al')
@@ -579,14 +607,21 @@ class FieldTestNode(Node):
 
             cont = True
             while cont:
-                print("[T-Minus 20 sec until data is collected]")
-                # time.sleep(10)  # Wait 20 seconds for rover to move to position & insert probe
-                print("[T-Minus 10 sec until data is collected]")
-                # time.sleep(5)
-                print("[T-Minus 5 sec until data is collected]")
-                # time.sleep(5)
-                print("Collecting Data... [T-Minus 100 sec until completion]")
-                cont, data_average = self.process_data()
+                print("[Waiting for data collection to be triggered via service call]")
+                # Start the data collection process in a separate thread
+                data_thread = threading.Thread(target=self.process_data)
+                data_thread.start()
+
+                # Wait for data collection to complete
+                data_thread.join()
+
+                # Retrieve the collected data average
+                data_average = self.collected_data_average
+
+                if data_average is not None:
+                    cont = False
+                else:
+                    print("Data collection failed. Retrying...")
 
             print("Average Moisture Percentage: ", data_average)
             print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -618,8 +653,8 @@ class FieldTestNode(Node):
 
             # Store optimal hyperparameters
             if self.kernel_type in ['RBF', 'Matern', 'Piece_Polynomial']:
-                self.noise.append(self.model.likelihood.noise.detach().detach().numpy())
-                self.lengthscale.append(self.model.covar_module.base_kernel.lengthscale.detach().detach().numpy()[0])
+                self.noise.append(self.model.likelihood.noise.detach().numpy())
+                self.lengthscale.append(self.model.covar_module.base_kernel.lengthscale.detach().numpy()[0])
 
             # Validation set from observed data
             validation_samples = min(4, len(self.i_train))
@@ -628,7 +663,7 @@ class FieldTestNode(Node):
 
             self.x_test = x_val
             self.GPeval()
-            y_new = self.observed_pred.mean.detach().detach().numpy()
+            y_new = self.observed_pred.mean.detach().numpy()
             y_baseline = y_obs[-validation_samples:]
             drift = np.mean(np.abs(y_baseline - y_new))  # Calculate model drift
 
@@ -649,7 +684,7 @@ class FieldTestNode(Node):
             self.upper_local = self.upper
             self.f_var_local = self.f_var
             self.x_test_local = x_test_local
-            self.var_iter_local.append(max(self.f_var_local.detach().numpy()))
+            self.var_iter_local.append(max(self.f_var_local))
 
             self.x_test = x_test_global
             self.GPeval()
@@ -658,18 +693,18 @@ class FieldTestNode(Node):
             self.upper_global = self.upper
             self.f_var_global = self.f_var
             self.x_test_global = x_test_global
-            self.var_iter_global.append(max(self.f_var_global.detach().numpy()))
+            self.var_iter_global.append(max(self.f_var_global))
 
             # Evaluate covariance properties
             self.covar_global.append(self.f_covar)
-            self.covar_trace.append(np.trace(self.f_covar.detach().detach().numpy()))
-            self.covar_totelements.append(np.size(self.f_covar.detach().detach().numpy()))
-            self.covar_nonzeroelements.append(np.count_nonzero(self.f_covar.detach().detach().numpy()))
+            self.covar_trace.append(np.trace(self.f_covar))
+            self.covar_totelements.append(np.size(self.f_covar))
+            self.covar_nonzeroelements.append(np.count_nonzero(self.f_covar))
             mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.likelihood, self.model)
 
             # Evaluate RKHS norm
-            K_global = self.output._covar.detach().detach().numpy()
-            y_global = self.y_train.detach().numpy().reshape(len(self.y_train), 1)
+            K_global = self.output.covariance_matrix.detach().numpy()
+            y_global = self.y_train.numpy().reshape(len(self.y_train), 1)
             f2_H_sample = self.RKHS_norm(K_global, y_global)
             self.f2_H_global.append(f2_H_sample[0, 0])
 
@@ -689,7 +724,7 @@ class FieldTestNode(Node):
                     # Waypoint within r_con with maximum variance, nearest neighbor along the way
                     uncertainty = self.upper_local - self.lower_local
                     i_max = np.argmax(uncertainty)
-                    x_max = self.x_test_local[i_max, :].detach().numpy()
+                    x_max = self.x_test_local[i_max, :].numpy()
                     i_NN = self.sample_disp_con(self.x_true[self.i_train[-1]], self.r_NN)
                     dx_NN = np.sqrt((self.x_true[i_NN, 0] - x_max[0]) ** 2 + (self.x_true[i_NN, 1] - x_max[1]) ** 2)
                     i_dx = np.argsort(dx_NN)
@@ -699,11 +734,11 @@ class FieldTestNode(Node):
                     # Waypoint within r_con with maximum variance, nearest neighbor along the way
                     uncertainty = self.upper_local - self.lower_local
                     i_max = np.argmax(uncertainty)
-                    x_max = self.x_test_local[i_max, :].detach().numpy()
+                    x_max = self.x_test_local[i_max, :].numpy()
                     next_point = self.x_true[i_max]
                     self.x_test = torch.tensor([next_point]).float()
                     self.GPeval()
-                    y_pred_next = self.observed_pred.mean.detach().detach().numpy()[0]
+                    y_pred_next = self.observed_pred.mean.detach().numpy()[0]
                     i_NN = self.sample_disp_con(self.x_true[self.i_train[-1]], self.r_NN)
                     dx_NN = np.sqrt((self.x_true[i_NN, 0] - x_max[0]) ** 2 + (self.x_true[i_NN, 1] - x_max[1]) ** 2)
                     i_dx = np.argsort(dx_NN)
@@ -727,7 +762,7 @@ class FieldTestNode(Node):
                     i_max = np.argmax(uncertainty)
                     # Waypoint within entire space with max variance, nearest neighbor
                     if self.constraint_flag == 1:
-                        a = self.x_test_global[i_max, :].detach().numpy()
+                        a = self.x_test_global[i_max, :].numpy()
                         i_NN = self.sample_disp_con(self.x_true[self.i_train[-1]], self.r_NN)
                         dx_NN = np.sqrt((self.x_true[i_NN, 0] - x_max[0]) ** 2 + (self.x_true[i_NN, 1] - x_max[1]) ** 2)
                         i_dx = np.argsort(dx_NN)
@@ -753,14 +788,39 @@ class FieldTestNode(Node):
 
                 cont = True
                 while cont:
-                    print("[T-Minus 20 sec until data is collected]")
-                    time.sleep(10)  # Wait 20 seconds for rover to move to position & insert probe
-                    print("[T-Minus 10 sec until data is collected]")
-                    time.sleep(5)
-                    print("[T-Minus 5 sec until data is collected]")
-                    time.sleep(5)
-                    print("Collecting Data... [T-Minus 100 sec until completion]")
-                    cont, data_average = self.process_data()
+                    # Wait for data collection to be triggered via service call
+                    self.get_logger().info('[Waiting for data collection to be triggered via service call]')
+                    self.data_collection_event.wait()
+                    self.data_collection_event.clear()
+                    self.get_logger().info('Data collection started...')
+
+                    cont_inner = True
+                    while cont_inner:
+                        try:
+                            # Reset the moisture data list
+                            with self.data_lock:
+                                self.moisture_data = []
+
+                            # Record the start time
+                            start_time = time.time()
+
+                            # Collect data for 5 seconds
+                            while time.time() - start_time <= 5:
+                                time.sleep(0.1)  # Sleep briefly to prevent busy waiting
+
+                            # After 5 seconds, process the collected data
+                            with self.data_lock:
+                                moisture_data_copy = self.moisture_data.copy()
+                                self.get_logger().info(f"Data received from moisture sensor: {self.moisture_data}")
+                                if not self.moisture_data:
+                                    raise ValueError("No data received from moisture sensor.")
+                                data_average = sum(self.moisture_data) / len(self.moisture_data)
+
+                            # Data collection successful
+                            cont_inner = False
+                        except Exception as e:
+                            self.get_logger().error(f"An error occurred during data collection: {e}")
+                            print("Data collection failed. Retrying...")
 
                 print("Average Moisture Percentage:", data_average)
                 actual_moisture = float(data_average)
@@ -783,7 +843,7 @@ class FieldTestNode(Node):
                 self.fig2 = plt.figure()
                 self.plotGP()
                 self.fig2.tight_layout()
-                self.fig2.savefig(self.new_folder_path + '/' + str(len(set(self.i_train))) + '.png')
+                self.fig2.savefig(str(len(set(self.i_train))) + '.png')
                 self.fig2.clear()
                 plt.close(self.fig2)
 
@@ -860,12 +920,18 @@ def main(args=None):
     rclpy.init(args=args)
     node = FieldTestNode()
     try:
+        executor = MultiThreadedExecutor(num_threads=4)
+        executor.add_node(node)
+        spin_thread = threading.Thread(target=executor.spin, daemon=True)
+        spin_thread.start()
         node.run()
     except Exception as e:
         node.get_logger().error(f'Error occurred: {e}')
     finally:
+        executor.shutdown()
         node.destroy_node()
         rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
