@@ -1,1 +1,2 @@
 float32 moisture_percent
+float32 timestamp
