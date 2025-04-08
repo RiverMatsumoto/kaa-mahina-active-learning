@@ -28,8 +28,8 @@ cd kaa-mahina-active-learning
 ```
 
 ### On Rover Raspberry pi and Jetson Orin Nano
-TODO
-
+Follow the steps outlined in this guideline: https://docs.google.com/document/d/185jutgDcAFHJFgQgFOSVkJMf8qD-lXxG1FFA9OOJPeI/edit?usp=sharing
+The guide details field testing set up procedures, wifi set up and connection to onboard computers, launching of hardware in ROS2, and how to run a complete trial.
 
 ## Rover Hardware Components Used
 ### Mobility Rover
