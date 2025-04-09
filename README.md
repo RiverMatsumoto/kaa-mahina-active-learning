@@ -24,7 +24,7 @@ First, you must set up your ground station computer environment.
 
 Move the .tar.gz file to the ground station computer & extract it:
 ```
-tar -xzvf env_export_20250409_1530.tar.gz
+tar -xzvf env_export_20250409_114050.tar.gz
 ```
 Download the import_env.sh script and save near the extracted folder. Make it executable:
 ```
@@ -32,9 +32,9 @@ chmod +x import_env_bundle.sh
 ```
 Run the script:
 ```
-./import_env_bundle.sh env_export_20250409_1530
+./import_env_bundle.sh env_export_20250409_11405
 ```
-This will restore the .bashrc & .bash_aliases, install python packages via pip, and reload the shell configuration from the original system the rover was operating on. To install the system and ROS2/GDAL packages, you should manually review and perform the following steps. 
+This will restore the .bashrc & .bash_aliases, install python packages via pip, and reload the shell configuration from the original system the rover was operating on. To install the system and ROS2 packages, you should manually review and perform the following steps. 
 
 Extract package names:
 ```
@@ -52,9 +52,8 @@ Clean up unnecessary packages:
 ```
 sudo apt autoremove
 ```
-Check for GDAL and ROS2:  
+Check for ROS2:  
 ```
-gdalinfo --version     # Confirm GDAL is working
 ros2 pkg list          # Confirm ROS2 environment is available
 ```
 Now, clone The repository, cd into the directory and build:
